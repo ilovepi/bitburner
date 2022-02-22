@@ -19,7 +19,7 @@ export async function main(ns) {
   await ns.write("/data/server.json.txt", s, "w");
 }
 
-/** @param {NS} ns **/
+/**  @param {import(".").NS } ns **/
 function analysis(ns, hostname, debug) {
   const hack_ratio = 0.1;
 
