@@ -2,7 +2,7 @@ import { breakPorts, can_root } from "/scripts/utils.js";
 
 let id = 0;
 
-/** @param {NS} ns **/
+/** @param {import(".").NS } ns */
 export async function main(ns) {
   // initialization & config
   // set up any constants
