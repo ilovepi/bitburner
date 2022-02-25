@@ -1,56 +1,69 @@
-/** @param {NS} ns **/
+/** @param {import("..").NS } ns */
 export async function main(ns) {
-    var can_try = true;
-    while (can_try) {
-        var money = ns.getServerMoneyAvailable("home");
-        var machine_count = ns.hacknet.numNodes();
-        ns.tprintf("Available Money: %d\n", money);
+  let can_try = true;
+  let limit = 1000;
+  do {
+    let money = ns.getServerMoneyAvailable("home");
+    let machine_count = ns.hacknet.numNodes();
+    ns.tprintf("Available Money: %d\n", money);
 
-        ns.tprintf("HackNet Machine Count: %d\n", machine_count);
-        let costs = [];
-        for (let i = 0; i < machine_count; i++) {
-            var p = ns.hacknet.getNodeStats(i);
-            //ns.tprint(p);
-            var level = ns.hacknet.getLevelUpgradeCost(i);
-            var ram = ns.hacknet.getRamUpgradeCost(i);
-            var core = ns.hacknet.getCoreUpgradeCost(i);
-            var min_cost = Math.min(level, ram, core);
-            costs.push(min_cost);
-            // var base = ns.formulas.hacknetNodes.moneyGainRate(p.level, p.ram, p.cores);
-            // var level = ns.formulas.hacknetNodes.moneyGainRate(p.level + 1, p.ram, p.cores);
-            // var ram = ns.formulas.hacknetNodes.moneyGainRate(p.level, p.ram + 1, p.cores);
-            // var cores = ns.formulas.hacknetNodes.moneyGainRate(p.level, p.ram, p.cores + 1);
-
-            // ns.tprintf("base = %f", base);
-            // ns.tprintf("level = %f", level);
-            // ns.tprintf("ram = %f", ram);
-            // ns.tprintf("cores = %f", cores);
-        }
-
-ns.tprint(costs);
-        var min = Math.min(...costs);
-
-        const node_cost = ns.hacknet.getPurchaseNodeCost();
-ns.tprint(node_cost);
-        if (node_cost < min) {
-            if (money > node_cost)
-                ns.hacknet.purchaseNode(1);
-            else can_try = false;
-        } else {
-            if (money < min) {
-                can_try = false;
-                return;
-            }
-            const index = costs.indexOf(min);
-            var level = ns.hacknet.getLevelUpgradeCost(index, 1);
-            var ram = ns.hacknet.getRamUpgradeCost(index, 1);
-            var core = ns.hacknet.getCoreUpgradeCost(index, 1);
-            if (level < ram && level < core )
-                ns.hacknet.upgradeLevel(index, 1);
-            else if (ram < core )
-                ns.hacknet.upgradeRam(index, 1);
-            else
-                ns.hacknet.upgradeCore(index, 1);
-        }
+    let costs = [];
+    for (let i = 0; i < machine_count; i++) {
+      let p = ns.hacknet.getNodeStats(i);
+      let cost_data = {
+        index: i,
+        costs: {
+          level: ns.hacknet.getLevelUpgradeCost(i),
+          ram: ns.hacknet.getRamUpgradeCost(i),
+          core: ns.hacknet.getCoreUpgradeCost(i),
+          cache: ns.hacknet.getCacheUpgradeCost(i),
+        },
+      };
+      costs.push(cost_data);
+      //  let base = ns.formulas.hacknetNodes.moneyGainRate(p.level, p.ram, p.cores);
+      //  let level = ns.formulas.hacknetNodes.moneyGainRate(p.level + 1, p.ram, p.cores);
+      //  let ram = ns.formulas.hacknetNodes.moneyGainRate(p.level, p.ram + 1, p.cores);
+      //  let cores = ns.formulas.hacknetNodes.moneyGainRate(p.level, p.ram, p.cores + 1);
     }
+    let min_item = find_min(costs);
+    let min = min_item_cost(min_item);
+    ns.tprint(min);
+
+    const node_cost = ns.hacknet.getPurchaseNodeCost();
+    if (node_cost < min || min == null || min == NaN) {
+      if (money > node_cost) ns.hacknet.purchaseNode(1);
+      else can_try = false;
+    } else {
+      if (money < min) {
+        can_try = false;
+        return;
+      }
+      const index = min_item.index;
+      // FIXME: does JS have a switch?
+      if (min == min_item.level) {
+        ns.tprint("upgrade level id:" + index);
+        ns.hacknet.upgradeLevel(index, 1);
+      } else if (min_item.ram == min) {
+        ns.tprint("upgrade ram id:" + index);
+        ns.hacknet.upgradeRam(index, 1);
+      } else if (min == min_item.core) {
+        ns.tprint("upgrade core id:" + index);
+        ns.hacknet.upgradeCore(index, 1);
+      } else if (min == min_item.cache) {
+        ns.tprint("upgrade cache id:" + index);
+        if (!ns.hacknet.upgradeCache(index, 1)) {
+          ns.tprint("failed to upgrade cache id:" + index);
+        }
+      }
+    }
+  } while (can_try && limit-- > 0);
+}
+
+function find_min(costs) {
+  costs.sort((a, b) => min_item_cost(a) - min_item_cost(b));
+  return costs[0];
+}
+
+function min_item_cost(item) {
+  return Math.min([item.level, item.cache, item.core, item.ram]);
 }
