@@ -14,6 +14,7 @@ export async function main(ns) {
   const grow_script = "/scripts/basics/grow.js";
   const weaken_script = "/scripts/basics/weaken.js";
 
+  ns.disableLog("getServerNumPortsRequired");
   ns.disableLog("getServerMaxRam");
   ns.disableLog("getServerUsedRam");
   //ns.disableLog("exec");
