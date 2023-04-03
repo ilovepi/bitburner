@@ -124,6 +124,7 @@ export async function main(ns) {
       "Begin Hacking phase for " + targets.length + " new servers, already hacking " + Object.keys(hacks).length,
     );
     targets.sort((a, b) => a.max_money - b.max_money);
+    //targets.sort((b, a) => a.weak_time - b.weak_time);
     // hack prepared targets
     for (let t of targets) {
       let s_g = t.weaken_time - t.grow_time;
