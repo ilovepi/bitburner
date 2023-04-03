@@ -7,7 +7,7 @@ export async function main(ns) {
 	var max_server = visited[0];
 
 	for (const s of visited) {
-		if (can_hack(ns, s)) {
+		if (await can_hack(ns, s)) {
 			var money = ns.getServerMaxMoney(s);
 			if (money > max_money) {
 				max_money = money;
