@@ -34,29 +34,27 @@ export async function main(ns) {
       if (money > node_cost) {
         let num = ns.hacknet.purchaseNode();
         ns.tprint("Purchased node: " + num);
-      } else
+      } else {
         can_try = false;
+      }
     } else {
       if (money < min) {
         can_try = false;
         return;
       }
       const index = min_item.index;
-      // FIXME: does JS have a switch?
       switch (min) {
         case min_item.level: {
           ns.tprint("upgrade level id:" + index);
           ns.hacknet.upgradeLevel(index, 1);
           break;
         }
-        case min.item.ram: {
+        case min_item.ram: {
           ns.tprint("upgrade ram id:" + index);
           ns.hacknet.upgradeRam(index, 1);
           break;
-
         }
         case min_item.core: {
-
           ns.tprint("upgrade core id:" + index);
           ns.hacknet.upgradeCore(index, 1);
           break;
@@ -68,26 +66,7 @@ export async function main(ns) {
           }
           break;
         }
-
-
       }
-      /*
-      if (min == min_item.level) {
-        ns.tprint("upgrade level id:" + index);
-        ns.hacknet.upgradeLevel(index, 1);
-      } else if (min_item.ram == min) {
-        ns.tprint("upgrade ram id:" + index);
-        ns.hacknet.upgradeRam(index, 1);
-      } else if (min == min_item.core) {
-        ns.tprint("upgrade core id:" + index);
-        ns.hacknet.upgradeCore(index, 1);
-      } else if (min == min_item.cache) {
-        ns.tprint("upgrade cache id:" + index);
-        if (!ns.hacknet.upgradeCache(index, 1)) {
-          ns.tprint("failed to upgrade cache id:" + index);
-        }
-      }
-
     }
   } while (can_try && limit-- > 0);
 }
