@@ -10,9 +10,7 @@ export async function main(ns) {
   for (const s of servers) {
     data.push(analysis(ns, s, false));
     if (s == home) continue;
-    for (const f of files) {
-      if (!ns.fileExists(f, s)) await ns.scp(f, home, s);
-    }
+    await ns.scp(files, s, home);
   }
   data.sort((a, b) => b.score - a.score);
   let s = JSON.stringify(data, null, 1);
