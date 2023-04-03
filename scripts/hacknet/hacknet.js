@@ -5,7 +5,7 @@ export async function main(ns) {
   do {
     let money = ns.getServerMoneyAvailable("home");
     let machine_count = ns.hacknet.numNodes();
-    ns.tprintf("Available Money: %d\n", money);
+    //ns.tprintf("Available Money: %d\n", money);
 
     let costs = [];
     for (let i = 0; i < machine_count; i++) {
@@ -27,12 +27,15 @@ export async function main(ns) {
     }
     let min_item = find_min(costs);
     let min = min_item_cost(min_item);
-    ns.tprint(min);
+    //ns.tprint(min);
 
     const node_cost = ns.hacknet.getPurchaseNodeCost();
-    if (node_cost < min || min == null || min == NaN) {
-      if (money > node_cost) ns.hacknet.purchaseNode(1);
-      else can_try = false;
+    if (node_cost < min || min == null || Number.isNaN(min)) {
+      if (money > node_cost) {
+        let num = ns.hacknet.purchaseNode();
+        ns.tprint("Purchased node: " + num);
+      } else
+        can_try = false;
     } else {
       if (money < min) {
         can_try = false;
@@ -40,6 +43,35 @@ export async function main(ns) {
       }
       const index = min_item.index;
       // FIXME: does JS have a switch?
+      switch (min) {
+        case min_item.level: {
+          ns.tprint("upgrade level id:" + index);
+          ns.hacknet.upgradeLevel(index, 1);
+          break;
+        }
+        case min.item.ram: {
+          ns.tprint("upgrade ram id:" + index);
+          ns.hacknet.upgradeRam(index, 1);
+          break;
+
+        }
+        case min_item.core: {
+
+          ns.tprint("upgrade core id:" + index);
+          ns.hacknet.upgradeCore(index, 1);
+          break;
+        }
+        case min_item.cache: {
+          ns.tprint("upgrade cache id:" + index);
+          if (!ns.hacknet.upgradeCache(index, 1)) {
+            ns.tprint("failed to upgrade cache id:" + index);
+          }
+          break;
+        }
+
+
+      }
+      /*
       if (min == min_item.level) {
         ns.tprint("upgrade level id:" + index);
         ns.hacknet.upgradeLevel(index, 1);
@@ -55,6 +87,7 @@ export async function main(ns) {
           ns.tprint("failed to upgrade cache id:" + index);
         }
       }
+
     }
   } while (can_try && limit-- > 0);
 }
