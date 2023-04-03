@@ -133,15 +133,21 @@ export async function main(ns) {
 
       let period = t.weaken_time / batches;
 
-      for (let i = 0; i < batches; i++) {
-        let pid = await run_wgh(ns, workers, t.name, t.t_h, 150 + i * period, s_h, true, hack_script, id);
-        let x = hacks[t.name];
-        if (x != undefined) hacks[t.name].push(pid);
-        else hacks[t.name] = [pid];
+      //ns.tprint(hacks[t.name])
+      const loop = true;
 
-        hacks[t.name].push(await run_wgh(ns, workers, t.name, t.t_w_h, i * period, 0, true, weaken_script, id));
-        hacks[t.name].push(await run_wgh(ns, workers, t.name, t.t_g, 50 + i * period, s_g, true, grow_script, id));
-        hacks[t.name].push(await run_wgh(ns, workers, t.name, t.t_w_g, 100 + i * period, 0, true, weaken_script, id++));
+      for (let i = 0; i < batches; i++) {
+        const delay = 100;
+        let pid = await run_wgh(ns, workers, t.name, t.t_h, (3 * delay) + i * period, s_h, loop, hack_script, id);
+        let x = hacks[t.name];
+        if (x != undefined) hacks[t.name].push(...pid);
+        else hacks[t.name] = pid;
+
+
+        hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_h, (0 * delay) + i * period, 0, loop, weaken_script, id));
+        hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_g,   (1 * delay) + i * period, s_g, loop, grow_script, id));
+        hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_g, (2 * delay) + i * period, 0, loop, weaken_script, id++));
+        //ns.tprint(hacks)
       }
     }
     ns.print("End Hacking phase for " + targets.length + " new servers, already hacking " + Object.keys(hacks).length);
@@ -186,7 +192,7 @@ async function prepare(ns, preping, hacks, workers, target) {
   let gi = await run_wgh(ns, workers, target.name, tg, 0, s_g, false, grow_script, id++);
   let wg = await run_wgh(ns, workers, target.name, twg, 0, 100, false, weaken_script, id++);
 
-  preping.push({ host: target.name, pids: [wi, gi, wg] });
+  preping.push({ host: target.name, pids: [...wi, ...gi, ...wg] });
 }
 
 /**
@@ -205,18 +211,36 @@ async function run_wgh(ns, workers, target, required_threads, delay, sleep_time,
   // i.e, schedule a partial task on s1, then the rest on s2, etc.
 
   // find server to run script w/ required threads
+  let pids = []
+  let done = false;
   for (let w of workers) {
-    let ram = ns.getServerMaxRam(w.name) - ns.getServerUsedRam(w.name);
-    let t = Math.floor(ram / ns.getScriptRam(script, w.name));
-    let l = loop ? "-l" : "";
-    if (t < required_threads) {
-      continue;
+    const max_ram = ns.getServerMaxRam(w.name);
+    let ram = max_ram - ns.getServerUsedRam(w.name);
+    if (w.name == "home") {
+      ram -= Math.floor(max_ram / 16);
     }
-    return ns.exec(script, w.name, required_threads, target, delay, sleep_time, l, id);
+    let avail_threads = Math.floor(ram / ns.getScriptRam(script, w.name));
+    let l = loop ? "-l" : "";
+    let threads_to_use = required_threads;
+    if (avail_threads < required_threads) {
+      required_threads -= avail_threads;
+      threads_to_use = avail_threads;
+      if (required_threads < 1)
+        done = true;
+    } else {
+      done = true;
+    }
+    //ns.tprintf("server: %s, script: %s, target: %s, required threads: %d, avail threads: %d\n", w.name, script, target, required_threads, avail_threads);
+    if (threads_to_use > 0) {
+      let pid = ns.exec(script, w.name, threads_to_use, target, delay, sleep_time, l, id)
+      if (pid != 0)
+        pids.push(pid);
+    }
+    if (done) break;
   }
-  //TODO: make this a log message
-  ns.tprintf("No Server had enough ram to run %s: %.2fGB", script, ns.getScriptRam(script));
-  return 0;
+  if (false && pids.length == 0)
+    ns.printf("No Server had enough ram to run %s: %.2fGB", script, ns.getScriptRam(script));
+  return pids;
 }
 
 /**  @param {import(".").NS } ns **/
