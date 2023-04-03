@@ -43,8 +43,8 @@ export async function main(ns) {
     if (!initialized) {
       for (let s of servers) {
         if (s.name === "home") continue;
-        //ns.print("killing processes on " + s.name);
-        await ns.killall(s.name);
+        ns.print("killing processes on " + s.name);
+        ns.killall(s.name);
       }
       initialized = true;
       ns.print("initialized");
