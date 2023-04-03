@@ -47,9 +47,10 @@ export async function port_count(ns) {
 
 /** @param {NS} ns **/
 export async function can_hack(ns, target) {
+	let rootable = await can_root(ns, target);
 	const hacking_ability = ns.getHackingLevel();
 	const required_level = ns.getServerRequiredHackingLevel(target);
-	return required_level < hacking_ability && await can_root(ns, target);
+    return (required_level < hacking_ability) && rootable;
 }
 
 
