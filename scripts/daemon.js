@@ -8,7 +8,7 @@ export async function main(ns) {
   // set up any constants
   const host = ns.getHostname();
 
-  const loop_period = 200; //millisec
+  const loop_period = 1000; //millisec
 
   const hack_script = "/scripts/basics/hack.js";
   const grow_script = "/scripts/basics/grow.js";
@@ -140,12 +140,13 @@ export async function main(ns) {
         const delay = 100;
         let pid = await run_wgh(ns, workers, t.name, t.t_h, (3 * delay) + i * period, s_h, loop, hack_script, id);
         let x = hacks[t.name];
-        if (x != undefined) hacks[t.name].push(...pid);
-        else hacks[t.name] = pid;
-
+        if (x != undefined)
+          hacks[t.name].push(...pid);
+        else
+          hacks[t.name] = pid;
 
         hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_h, (0 * delay) + i * period, 0, loop, weaken_script, id));
-        hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_g,   (1 * delay) + i * period, s_g, loop, grow_script, id));
+        hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_g, (1 * delay) + i * period, s_g, loop, grow_script, id));
         hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_g, (2 * delay) + i * period, 0, loop, weaken_script, id++));
         //ns.tprint(hacks)
       }
@@ -165,14 +166,16 @@ export async function main(ns) {
   ns.print("Somehow exiting daemon!");
 }
 
-/** @param {NS} ns **/
+/**
+ * @param {import(".").NS } ns
+ *  **/
 async function prepare(ns, preping, hacks, workers, target) {
   // don't prepare something already being prepared
   if (preping.some((a) => a.host == target.name)) return;
 
   // stop any running hacks if we want to prep this thing
   if (hacks[target.name] != undefined) {
-    //ns.tprint("Killing to prep on " + target.name);
+    // ns.tprint("Killing to prep on " + target.name);
     for (let pid of hacks[target.name]) {
       ns.kill(pid);
     }
