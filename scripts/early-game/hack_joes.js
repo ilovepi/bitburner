@@ -13,7 +13,7 @@
 // 		ns.sqlinject(hostname);
 //}
 
-/** @param {NS} ns **/
+/** @param {import("..").NS } ns */
 export async function main(ns) {
 	var target = "joesguns";
 	var threads = ns.args[1];
@@ -26,11 +26,11 @@ export async function main(ns) {
 	//	ns.nuke(target);
 	while (true) {
 		if (ns.getServerSecurityLevel(target) > securityThresh) {
-			await ns.weaken(target, threads);
+			await ns.weaken(target, { threads: threads });
 		} else if (ns.getServerMoneyAvailable(target) < moneyThresh) {
-			await ns.grow(target, threads);
+			await ns.grow(target, { threads: threads });
 		} else {
-			await ns.hack(target, threads);
+			await ns.hack(target, { threads: threads });
 		}
 	}
 }

@@ -1,4 +1,4 @@
-/** @param {import(".").NS } ns */
+/** @param {import("..").NS } ns */
 export async function main(ns) {
   const my_money = ns.getServerMoneyAvailable("home");
   ns.tprintf("Available $%d", my_money);
@@ -42,7 +42,7 @@ export async function main(ns) {
   // ns.exec("distribute_exploit.js", "home");
 }
 
-/** @param {NS} ns **/
+/** @param {import("..").NS } ns */
 function my_max_ram(ns) {
   var max = 0;
   const servers = ns.getPurchasedServers();

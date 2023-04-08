@@ -1,4 +1,4 @@
-/** @param {NS} ns **/
+/** @param {import(".").NS } ns */
 export async function find_all_servers(ns) {
 	var visited = [];
 	var worklist = [ns.getHostname()];
@@ -17,8 +17,9 @@ export async function find_all_servers(ns) {
 	return visited;
 }
 
-// try to open every port we can
+/** @param {import(".").NS } ns */
 export function breakPorts(ns, hostname) {
+// try to open every port we can
 	const home = "home"
 	if (ns.fileExists("BruteSSH.exe", home))
 		ns.brutessh(hostname);
@@ -32,7 +33,7 @@ export function breakPorts(ns, hostname) {
 		ns.sqlinject(hostname);
 }
 
-/** @param {NS} ns **/
+/** @param {import(".").NS } ns */
 export async function port_count(ns) {
 	const home = "home";
 	var count = 0;
@@ -45,7 +46,7 @@ export async function port_count(ns) {
 }
 
 
-/** @param {NS} ns **/
+/** @param {import(".").NS } ns */
 export async function can_hack(ns, target) {
 	let rootable = await can_root(ns, target);
 	const hacking_ability = ns.getHackingLevel();
@@ -54,7 +55,7 @@ export async function can_hack(ns, target) {
 }
 
 
-/** @param {NS} ns **/
+/** @param {import(".").NS } ns */
 export async function can_root(ns, target) {
 	const ports = ns.getServerNumPortsRequired(target);
 	return ports <= await port_count(ns);

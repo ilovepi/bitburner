@@ -1,4 +1,4 @@
-/** @param {import(".").NS } ns */
+/** @param {import("..").NS } ns */
 export async function main(ns) {
   var formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
   const my_money = ns.getServerMoneyAvailable("home");

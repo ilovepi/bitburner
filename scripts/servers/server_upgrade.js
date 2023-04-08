@@ -1,4 +1,4 @@
-/** @param {NS} ns **/
+/** @param {import("..").NS } ns */
 export async function main(ns) {
     const max_ram = ns.getPurchasedServerMaxRam();
     var server_list = ns.getPurchasedServers();
