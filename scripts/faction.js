@@ -23,22 +23,22 @@ export async function main(ns) {
   let my_factions = player.factions;
 
   for (let f of my_factions) {
-    let aug_list = ns.getAugmentationsFromFaction(f);
+    let aug_list = ns.singularity.getAugmentationsFromFaction(f);
     let augs = [];
     for (let a of aug_list) {
-      if (!ns.getOwnedAugmentations(true).includes(a))
+      if (!ns.singularity.getOwnedAugmentations(true).includes(a))
         augs.push({
           name: a,
-          price: ns.getAugmentationPrice(a),
-          prereq: ns.getAugmentationPrereq(a),
-          rep: ns.getAugmentationRepReq(a),
+          price: ns.singularity.getAugmentationPrice(a),
+          prereq: ns.singularity.getAugmentationPrereq(a),
+          rep: ns.singularity.getAugmentationRepReq(a),
         });
     }
 
     for (let a of augs) {
       let have_prereq = true;
       for (let p of a.prereq) {
-        if (!ns.getOwnedAugmentations(true).includes(p)) {
+        if (!ns.singularity.getOwnedAugmentations(true).includes(p)) {
           have_prereq = false;
           break;
         }
@@ -49,8 +49,8 @@ export async function main(ns) {
       }
 
       // work for faction until we have the necessary rep
-      while (ns.getFactionRep(f) < a.rep) {
-        ns.workForFaction(f, "hacking", false);
+      while (ns.singularity.getFactionRep(f) < a.rep) {
+        ns.singularity.workForFaction(f, "hacking", false);
         await ns.sleep(1000 * 60);
       }
     }

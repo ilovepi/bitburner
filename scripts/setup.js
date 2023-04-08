@@ -1,16 +1,16 @@
 /** @param {import(".").NS } ns */
 export async function main(ns) {
-  ns.purchaseTor();
+  ns.singularity.purchaseTor();
   buyPrograms(ns);
-  ns.universityCourse("rothman university", "study computer science", true);
+  ns.singularity.universityCourse("rothman university", "study computer science", true);
   ns.exec("/scripts/daemon.js", "home");
 
-  await ns.sleep(1000 * 5 * 60);
+  //await ns.sleep(1000 * 5 * 60);
   buyPrograms(ns);
   ns.exec("/scripts/work.js", "home");
   ns.exec("/scripts/backdoor.js", "home");
-  for (let f of ns.checkFactionInvitations()) {
-    ns.joinFaction(f);
+  for (let f of ns.singularity.checkFactionInvitations()) {
+    ns.singularity.joinFaction(f);
   }
 }
 
@@ -27,5 +27,5 @@ export function buyPrograms(ns) {
 
 /** @param {import(".").NS } ns */
 function buyProg(ns, name) {
-  if (!ns.fileExists(name, "home")) ns.purchaseProgram(name);
+  if (!ns.fileExists(name, "home")) ns.singularity.purchaseProgram(name);
 }

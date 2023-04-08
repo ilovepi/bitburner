@@ -6,8 +6,8 @@ const max_iterations = 50;
 /** @param {import(".").NS } ns */
 export async function main(ns) {
   for (let i = 0; i < max_iterations; ++i) {
-    // ns.travelToCity("chongching");
-    //await ns.sleep(ns.commitCrime("Mug someone"));
-    await ns.sleep(ns.commitCrime("Homicide"));
+    // ns.singularity.travelToCity("chongching");
+    //await ns.sleep(ns.singularity.commitCrime("Mug someone"));
+    await ns.sleep(ns.singularity.commitCrime("Homicide"));
   }
 }

@@ -21,10 +21,10 @@ const all_factions = [].concat(early, city, hacking, corporations, crime, endgam
 export async function main(ns) {
   let player = ns.getPlayer();
   for (let c of corporations) {
-    if (!player.factions.includes(c) && ns.getCompanyRep(c) < 250000) {
-      if (player.jobs[c] != undefined || ns.applyToCompany(c, "software")) {
-        while (ns.getCompanyRep(c) < 250000) {
-          ns.workForCompany(c, false);
+    if (!player.factions.includes(c) && ns.singularity.getCompanyRep(c) < 250000) {
+      if (player.jobs[c] != undefined || ns.singularity.applyToCompany(c, "software")) {
+        while (ns.singularity.getCompanyRep(c) < 250000) {
+          ns.singularity.workForCompany(c, false);
           await ns.sleep(60 * 1000);
         }
       }
