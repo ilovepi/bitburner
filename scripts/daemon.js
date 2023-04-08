@@ -67,7 +67,6 @@ export async function main(ns) {
       // targets that are not profitable to hack <-- i.e, they can be extra compute
       //if (s.max_money == 0 || !s.can_hack || s.name == "home") {
       if (s.max_money == 0 || s.name == "home") {
-        workers.push(s);
         continue;
       }
 
@@ -81,7 +80,6 @@ export async function main(ns) {
       let t = hacks[s.name];
       if (t != undefined && t.length != 0) {
         if (t.some(ns.isRunning)) {
-          workers.push(s);
           continue;
         }
         delete hacks[s.name];
@@ -101,6 +99,7 @@ export async function main(ns) {
       ns.tprintf("Total: %d", servers.length);
     }
 
+    workers = servers.filter((a) => a.is_rooted)
     //sort workers by name, then by ram
     workers.sort((a, b) => a.name - b.name);
     workers.sort((a, b) => getRam(ns, b) - getRam(ns, a));
@@ -110,65 +109,85 @@ export async function main(ns) {
     preping = preping.filter((a) => a.pids.some(ns.isRunning));
     to_prepare.sort((a, b) => a.max_money - b.max_money);
 
+    await hackingPhase(ns, targets, hacks, workers, hack_script, weaken_script, grow_script);
+
     //TODO: figure out when prep is over and schedule batching to begin ASAP
     // for ever target we need to prepare, devote resources to prep
-    ns.print("Begin Prepare phase for " + to_prepare.length + " servers");
-    ns.print(to_prepare.map((a) => a.name));
-    for (let p of to_prepare) {
-      await prepare(ns, preping, hacks, workers, p);
-      //let x = prepare(ns, preping, workers, p);
-      //Promise.all;
-    }
+    await prepPhase(ns, to_prepare, preping, hacks, workers);
 
-    ns.print(
-      "Begin Hacking phase for " + targets.length + " new servers, already hacking " + Object.keys(hacks).length,
-    );
-    targets.sort((a, b) => a.max_money - b.max_money);
-    //targets.sort((b, a) => a.weak_time - b.weak_time);
-    // hack prepared targets
-    for (let t of targets) {
-      let s_g = t.weaken_time - t.grow_time;
-      let s_h = t.weaken_time - t.hack_time;
-      let batches = Math.ceil(Math.min(/*once per sec*/ t.weaken_time / 1000, 100));
-
-      let period = t.weaken_time / batches;
-
-      //ns.tprint(hacks[t.name])
-      const loop = true;
-
-      for (let i = 0; i < batches; i++) {
-        const delay = 100;
-        let pid = await run_wgh(ns, workers, t.name, t.t_h, (3 * delay) + i * period, s_h, loop, hack_script, id);
-        let x = hacks[t.name];
-        if (x != undefined)
-          hacks[t.name].push(...pid);
-        else
-          hacks[t.name] = pid;
-
-        hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_h, (0 * delay) + i * period, 0, loop, weaken_script, id));
-        hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_g, (1 * delay) + i * period, s_g, loop, grow_script, id));
-        hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_g, (2 * delay) + i * period, 0, loop, weaken_script, id++));
-        //ns.tprint(hacks)
-      }
-    }
-    ns.print("End Hacking phase for " + targets.length + " new servers, already hacking " + Object.keys(hacks).length);
-
-    ns.print("Begin Rooting phase for " + future.length + " servers");
-    for (let f of future) {
-      if (await can_root(ns, f.name)) {
-        breakPorts(ns, f.name);
-        ns.nuke(f.name);
-      }
-    }
+    await rootingPhase(ns, future);
 
     await ns.sleep(loop_period);
   } while (loop);
   ns.print("Somehow exiting daemon!");
 }
 
+/** @param {import(".").NS } ns */
+async function prepPhase(ns, to_prepare, preping, hacks, workers) {
+  ns.print("Begin Prepare phase for " + to_prepare.length + " servers");
+  ns.print(to_prepare.map((a) => a.name));
+  for (let p of to_prepare) {
+    await prepare(ns, preping, hacks, workers, p);
+    //let x = prepare(ns, preping, workers, p);
+    //Promise.all;
+  }
+}
+
+/** @param {import(".").NS } ns */
+async function rootingPhase(ns, future) {
+  ns.print("Begin Rooting phase for " + future.length + " servers");
+  for (let f of future) {
+    if (await can_root(ns, f.name)) {
+      breakPorts(ns, f.name);
+      ns.nuke(f.name);
+    }
+  }
+}
+
+/** @param {import(".").NS } ns */
+async function hackingPhase(ns, targets, hacks, workers, hack_script, weaken_script, grow_script) {
+  ns.print(
+    "Begin Hacking phase for " + targets.length + " new servers, already hacking " + Object.keys(hacks).length
+  );
+  if (targets.length > 0)
+    ns.print(targets.map((a) => a.name));
+  targets.sort((a, b) => a.max_money - b.max_money);
+  targets.sort((b, a) => a.weak_time - b.weak_time);
+  // if (ns.getPlayer().money < 10 ** 9)
+  //   targets = targets.filter((a) => a.name == "n00dles");
+  // hack prepared targets
+  for (let t of targets) {
+    let s_g = t.weaken_time - t.grow_time;
+    let s_h = t.weaken_time - t.hack_time;
+    let batches = Math.ceil(Math.min(/*once per sec*/ t.weaken_time / 1000, 100));
+
+    let period = t.weaken_time / batches;
+
+    //ns.tprint(hacks[t.name])
+    const loop = false;
+
+    for (let i = 0; i < batches; i++) {
+      const delay = 100;
+      let pid = await run_wgh(ns, workers, t.name, t.t_h, (3 * delay) + i * period, s_h, loop, hack_script, id);
+      let x = hacks[t.name];
+      if (x != undefined)
+        hacks[t.name].push(...pid);
+
+      else
+        hacks[t.name] = pid;
+
+      hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_h, (0 * delay) + i * period, 0, loop, weaken_script, id));
+      hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_g, (1 * delay) + i * period, s_g, loop, grow_script, id));
+      hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_g, (2 * delay) + i * period, 0, loop, weaken_script, id++));
+      //ns.tprint(hacks)
+    }
+  }
+  ns.print("End Hacking phase for " + targets.length + " new servers, already hacking " + Object.keys(hacks).length);
+}
+
 /**
  * @param {import(".").NS } ns
- *  **/
+ **/
 async function prepare(ns, preping, hacks, workers, target) {
   // don't prepare something already being prepared
   if (preping.some((a) => a.host == target.name)) return;
