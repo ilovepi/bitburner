@@ -1,9 +1,17 @@
 /** @param {import("..").NS } ns **/
 export async function main(ns) {
   // hack.js [target] [delay] [sleep] [-l] [id]
-  await ns.sleep(ns.args[1]);
+  let data = ns.flags([
+    ["target", "n00dles"],
+    ["delay", 0],
+    ["sleep", 0],
+    ["loop", false],
+    ["stocks", false],
+    ["id", 0],
+  ]);
+  await ns.sleep(data["delay"]);
   do {
-    await ns.sleep(ns.args[2]);
-    await ns.hack(ns.args[0], {stock: false});
-  } while (ns.args[3] == "-l");
+    await ns.sleep(data["sleep"]);
+    await ns.hack(data["target"], {stock: data["stocks"]});
+  } while (data["loop"]);
 }
