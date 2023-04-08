@@ -227,11 +227,9 @@ async function prepare(ns, preping, hacks, workers, target) {
  * @param {bool} loop
  * @param {string} script
  * @param {number} id
+ * @param {bool} stocks
  */
-async function run_wgh(ns, workers, target, required_threads, delay, sleep_time, loop, script, id) {
-  // TODO: make this schedule whatever threads are able, and then move onto the next server
-  // i.e, schedule a partial task on s1, then the rest on s2, etc.
-
+async function run_wgh(ns, workers, target, required_threads, delay, sleep_time, loop, script, id, stocks) {
   // find server to run script w/ required threads
   let pids = []
   let done = false;
@@ -253,8 +251,13 @@ async function run_wgh(ns, workers, target, required_threads, delay, sleep_time,
       done = true;
     }
     //ns.tprintf("server: %s, script: %s, target: %s, required threads: %d, avail threads: %d\n", w.name, script, target, required_threads, avail_threads);
+    let args = ["--target", target, "--delay", delay, "--sleep", sleep_time, "--id", id];
+    if (loop)
+      args.push("--loop");
+    if (stocks)
+      args.push("--stocks");
     if (threads_to_use > 0) {
-      let pid = ns.exec(script, w.name, threads_to_use, target, delay, sleep_time, l, id)
+      let pid = ns.exec(script, w.name, threads_to_use, ...args);
       if (pid != 0)
         pids.push(pid);
     }
