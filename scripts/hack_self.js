@@ -6,6 +6,4 @@ export async function main(ns) {
   ns.bypass(p);
   p.completely_unused_field = true;
  await ns.sleep(50);
-
-  ns.
 }
