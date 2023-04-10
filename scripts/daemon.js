@@ -1,6 +1,22 @@
+// @ts-ignore
 import { breakPorts, can_root } from "/scripts/utils.js";
 
+// @ts-ignore
+import { ServerData } from "/scripts/ServerData.js";
+
 let id = 0;
+
+class Scripts {
+  constructor(hacking, grow, weaken) {
+    this.hack = hacking;
+    this.grow = grow;
+    this.weaken = weaken;
+  }
+
+}
+
+const scripts = new Scripts("/scripts/basics/hack.js", "/scripts/basics/grow.js", "/scripts/basics/weaken.js",);
+
 
 /** @param {import(".").NS } ns */
 export async function main(ns) {
@@ -8,24 +24,21 @@ export async function main(ns) {
   // set up any constants
   const host = ns.getHostname();
 
-  const loop_period = 1000; //millisec
-
-  const hack_script = "/scripts/basics/hack.js";
-  const grow_script = "/scripts/basics/grow.js";
-  const weaken_script = "/scripts/basics/weaken.js";
+  const loop_period = 500; //millisec
 
   ns.disableLog("getServerNumPortsRequired");
   ns.disableLog("getServerMaxRam");
   ns.disableLog("getServerUsedRam");
-  //ns.disableLog("exec");
+  ns.disableLog("exec");
+  ns.disableLog("kill");
   // calculate static values
 
   // create necessary data structures
 
   // check for the precense of our data files
 
-  var preping = [];
-  var hacks = {};
+  let preping = new Map();
+  let hacks = new Map();
 
   let debug = false;
   let loop = true;
@@ -38,7 +51,7 @@ export async function main(ns) {
     // if servers are too poor or sec too high, our scripts are
     // not working correctly, kill and add to prep list
     ns.exec("/scripts/collect_servers.js", host);
-    await ns.sleep(100);
+    await ns.sleep(50);
     var servers = JSON.parse(ns.read("/data/server.json.txt"));
     if (!initialized) {
       for (let s of servers) {
@@ -53,6 +66,8 @@ export async function main(ns) {
     let workers = [];
     let targets = [];
     let future = [];
+
+    let start_money = ns.getPlayer().money;
 
     // categorize servers into groups
     for (let s of servers) {
@@ -77,16 +92,31 @@ export async function main(ns) {
       }
 
       // Everything else is a target we can hack now, unless wer're already hacking it
-      let t = hacks[s.name];
+      let t = hacks.get(s.name);
       if (t != undefined && t.length != 0) {
         if (t.some(ns.isRunning)) {
           continue;
         }
-        delete hacks[s.name];
+        hacks.delete(s.name);
         //ns.tprint(s.name, Object.keys(hacks));
       }
       targets.push(s);
     } // end for loop
+
+    //sort workers by name, then by ram
+    workers = servers
+      .filter((a) => a.is_rooted)
+      .sort((a, b) => a.name - b.name)
+      .sort((a, b) => getRam(ns, b) - getRam(ns, a));
+
+    // clean out prepping list
+    //preping = preping.filter((a) => a.pids.some(ns.isRunning));
+    preping.forEach((value, key) => {
+      if (!value.some(ns.isRunning)) preping.delete(key);
+    });
+    to_prepare = to_prepare
+      .sort((a, b) => a.max_money - b.max_money)
+      .sort((a, b) => a.weak_time - b.weak_time);
 
     if (debug) {
       ns.tprint("Future: ");
@@ -99,41 +129,53 @@ export async function main(ns) {
       ns.tprintf("Total: %d", servers.length);
     }
 
-    workers = servers.filter((a) => a.is_rooted)
-    //sort workers by name, then by ram
-    workers.sort((a, b) => a.name - b.name);
-    workers.sort((a, b) => getRam(ns, b) - getRam(ns, a));
-    ns.print(workers.map((a) => a.name));
+    // do we execute hwgw scripts in a loop?
+    const loop_scripts = false;
+    // do hwgw scripts affect the stock market?
+    const affect_stocks = false;
+    // Try to be more focused if we don't have a lot of money
+    if (ns.getPlayer().money < 10 ** 9) {
+      targets = targets.filter((a) => a.name == "joesguns");
+      to_prepare = to_prepare.filter((a) => a.name == "joesguns");
+      // const max_len = 3;
+      // if (targets.length > max_len)
+      // targets = targets.slice(0, max_len);
+    }
 
-    // clean out prepping list
-    preping = preping.filter((a) => a.pids.some(ns.isRunning));
-    to_prepare.sort((a, b) => a.max_money - b.max_money);
+    await hackingPhase(ns, targets, hacks, workers, loop_scripts, affect_stocks);
 
-    await hackingPhase(ns, targets, hacks, workers, hack_script, weaken_script, grow_script);
-
-    //TODO: figure out when prep is over and schedule batching to begin ASAP
-    // for ever target we need to prepare, devote resources to prep
     await prepPhase(ns, to_prepare, preping, hacks, workers);
 
     await rootingPhase(ns, future);
 
     await ns.sleep(loop_period);
+    let end_money = ns.getPlayer().money;
+    var formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+    ns.printf("Wealth Delta: %s", formatter.format(end_money - start_money));
+
   } while (loop);
   ns.print("Somehow exiting daemon!");
 }
 
-/** @param {import(".").NS } ns */
+/**
+ * @param {import(".").NS } ns
+ * @param {ServerData[]} to_prepare
+ * @param {Map<string, Number[]>} preping
+ * @param {Map<string, Number[]>} hacks
+ * @param {ServerData[]} workers
+ */
 async function prepPhase(ns, to_prepare, preping, hacks, workers) {
   ns.print("Begin Prepare phase for " + to_prepare.length + " servers");
   ns.print(to_prepare.map((a) => a.name));
   for (let p of to_prepare) {
     await prepare(ns, preping, hacks, workers, p);
-    //let x = prepare(ns, preping, workers, p);
-    //Promise.all;
   }
 }
 
-/** @param {import(".").NS } ns */
+/**
+ * @param {import(".").NS} ns
+ * @param {ServerData[]} future
+ */
 async function rootingPhase(ns, future) {
   ns.print("Begin Rooting phase for " + future.length + " servers");
   for (let f of future) {
@@ -144,58 +186,88 @@ async function rootingPhase(ns, future) {
   }
 }
 
-/** @param {import(".").NS } ns */
-async function hackingPhase(ns, targets, hacks, workers, hack_script, weaken_script, grow_script) {
-  ns.print(
-    "Begin Hacking phase for " + targets.length + " new servers, already hacking " + Object.keys(hacks).length
+/**
+ * @param {import(".").NS } ns
+ * @param {ServerData[]} targets
+ * @param {ServerData[]} workers
+ * @param {Map<string, Number[]>} hacks
+ * @param {boolean} loop
+ * @param {boolean} stocks
+ *
+ */
+async function hackingPhase(ns, targets, hacks, workers, loop, stocks) {
+  ns.printf(
+    "Begin Hacking phase for %d new servers, already hacking %d",
+    targets.length,
+    hacks.size
   );
-  if (targets.length > 0)
-    ns.print(targets.map((a) => a.name));
   targets.sort((a, b) => a.max_money - b.max_money);
-  targets.sort((b, a) => a.weak_time - b.weak_time);
-  // if (ns.getPlayer().money < 10 ** 9)
-  //   targets = targets.filter((a) => a.name == "n00dles");
+  // targets.sort((b, a) => a.weak_time - b.weak_time);
+
+  if (targets.length > 0) ns.print(targets.map((a) => a.name));
+
   // hack prepared targets
   for (let t of targets) {
     let s_g = t.weaken_time - t.grow_time;
     let s_h = t.weaken_time - t.hack_time;
-    let batches = Math.ceil(Math.min(/*once per sec*/ t.weaken_time / 1000, 100));
 
-    let period = t.weaken_time / batches;
+    let weaken_grow_ram = ns.getScriptRam(scripts.weaken) * t.t_w_h;
+    let weaken__hack_ram = ns.getScriptRam(scripts.weaken) * t.t_w_g;
+    let grow_ram = ns.getScriptRam(scripts.grow) * t.t_g;
+    let hack_ram = ns.getScriptRam(scripts.hack) * t.t_h;
+    let required_ram = weaken_grow_ram + weaken__hack_ram + grow_ram + hack_ram;
 
-    //ns.tprint(hacks[t.name])
-    const loop = false;
+    const delay = 100;
+    const batch_time = t.weaken_time + 6 * delay;
+    // let batches = Math.ceil(Math.min(/*once per sec*/ t.weaken_time / 500, 100));
+    let batches = Math.ceil(batch_time / (4 * delay));
+    let period = batch_time / batches;
 
     for (let i = 0; i < batches; i++) {
-      const delay = 100;
-      let pid = await run_wgh(ns, workers, t.name, t.t_h, (3 * delay) + i * period, s_h, loop, hack_script, id);
-      let x = hacks[t.name];
-      if (x != undefined)
-        hacks[t.name].push(...pid);
+      let server = find_server_for_batch(ns, workers, required_ram);
 
-      else
-        hacks[t.name] = pid;
+      // let pid = await run_wgh(ns, workers, t.name, t.t_h, 4 * delay + i * period, s_h, loop, hack_script, id, stocks);
+      // pid.push(...(await run_wgh(ns, workers, t.name, t.t_w_h, 1 * delay + i * period, 0, loop, weaken_script, id, stocks)));
+      // pid.push(...(await run_wgh(ns, workers, t.name, t.t_g, 2 * delay + i * period, s_g, loop, grow_script, id, stocks)));
+      // pid.push(...(await run_wgh(ns, workers, t.name, t.t_w_g, 3 * delay + i * period, 0, loop, weaken_script, id++, stocks)));
 
-      hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_h, (0 * delay) + i * period, 0, loop, weaken_script, id));
-      hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_g, (1 * delay) + i * period, s_g, loop, grow_script, id));
-      hacks[t.name].push(...await run_wgh(ns, workers, t.name, t.t_w_g, (2 * delay) + i * period, 0, loop, weaken_script, id++));
-      //ns.tprint(hacks)
+      let period_offset = i * period;
+
+      let pid = await batch_runner(ns, server, t, delay, period_offset, s_h, loop, stocks, s_g);
+
+      let running_hacks = hacks.get(t.name);
+      if (running_hacks != undefined) {
+        running_hacks.push(...pid);
+      } else {
+        hacks.set(t.name, pid);
+      }
     }
   }
-  ns.print("End Hacking phase for " + targets.length + " new servers, already hacking " + Object.keys(hacks).length);
+  ns.printf(
+    "End Hacking phase for %d new servers, already hacking %d",
+    targets.length,
+    hacks.size
+  );
 }
+
 
 /**
  * @param {import(".").NS } ns
- **/
+ * @param {Object} target
+ * @param {Object[]} workers
+ * @param {Map<string, Number[]>} hacks
+ * @param {Map<string, Number[]>} preping
+ *
+ */
 async function prepare(ns, preping, hacks, workers, target) {
   // don't prepare something already being prepared
-  if (preping.some((a) => a.host == target.name)) return;
+  if (preping.has(target.name)) return;
 
+  let pids = hacks.get(target.name);
   // stop any running hacks if we want to prep this thing
-  if (hacks[target.name] != undefined) {
+  if (pids != undefined) {
     // ns.tprint("Killing to prep on " + target.name);
-    for (let pid of hacks[target.name]) {
+    for (let pid of pids) {
       ns.kill(pid);
     }
   }
@@ -209,61 +281,67 @@ async function prepare(ns, preping, hacks, workers, target) {
   let s_g = weak_time - grow_time + 50;
   const grow_script = "/scripts/basics/grow.js";
   const weaken_script = "/scripts/basics/weaken.js";
+  let wi = await run_wgh(ns, workers, target.name, twi, 0, 0, false, weaken_script, id++, false);
+  let gi = await run_wgh(ns, workers, target.name, tg, 0, s_g, false, grow_script, id++, false);
+  let wg = await run_wgh(ns, workers, target.name, twg, 0, 100, false, weaken_script, id++, false);
 
-  let wi = await run_wgh(ns, workers, target.name, twi, 0, 0, false, weaken_script, id++);
-  let gi = await run_wgh(ns, workers, target.name, tg, 0, s_g, false, grow_script, id++);
-  let wg = await run_wgh(ns, workers, target.name, twg, 0, 100, false, weaken_script, id++);
-
-  preping.push({ host: target.name, pids: [...wi, ...gi, ...wg] });
+  preping.set(target.name, [...wi, ...gi, ...wg]);
 }
 
 /**
  * @param {import(".").NS } ns
- * @param {[any] }workers
+ * @param {any[] }workers
  * @param {string} target
  * @param {number} required_threads
  * @param {number} delay
  * @param {number} sleep_time
- * @param {bool} loop
+ * @param {boolean} loop
  * @param {string} script
  * @param {number} id
- * @param {bool} stocks
+ * @param {boolean} stocks
  */
 async function run_wgh(ns, workers, target, required_threads, delay, sleep_time, loop, script, id, stocks) {
+  const enable_split_batching = false;
+  const debug = false;
   // find server to run script w/ required threads
-  let pids = []
+  let pids = [];
   let done = false;
   for (let w of workers) {
-    const max_ram = ns.getServerMaxRam(w.name);
+    const max_ram = w.ram;
     let ram = max_ram - ns.getServerUsedRam(w.name);
     if (w.name == "home") {
-      ram -= Math.floor(max_ram / 16);
+      ram -= max_ram / 16;
     }
     let avail_threads = Math.floor(ram / ns.getScriptRam(script, w.name));
-    let l = loop ? "-l" : "";
     let threads_to_use = required_threads;
-    if (avail_threads < required_threads) {
-      required_threads -= avail_threads;
-      threads_to_use = avail_threads;
-      if (required_threads < 1)
+    if (enable_split_batching) {
+      if (avail_threads < required_threads) {
+        required_threads -= avail_threads;
+        threads_to_use = avail_threads;
+        if (required_threads < 1)
+          done = true;
+      } else {
         done = true;
+      }
     } else {
+      if (avail_threads < required_threads)
+        continue;
       done = true;
     }
     //ns.tprintf("server: %s, script: %s, target: %s, required threads: %d, avail threads: %d\n", w.name, script, target, required_threads, avail_threads);
-    let args = ["--target", target, "--delay", delay, "--sleep", sleep_time, "--id", id];
+    let args = ["--target", target, "--delay", delay, "--sleep", sleep_time, "--id", id,];
     if (loop)
       args.push("--loop");
     if (stocks)
       args.push("--stocks");
     if (threads_to_use > 0) {
       let pid = ns.exec(script, w.name, threads_to_use, ...args);
-      if (pid != 0)
-        pids.push(pid);
+      if (pid != 0) pids.push(pid);
     }
-    if (done) break;
+    if (done)
+      break;
   }
-  if (false && pids.length == 0)
+  if (debug && pids.length == 0)
     ns.printf("No Server had enough ram to run %s: %.2fGB", script, ns.getScriptRam(script));
   return pids;
 }
@@ -271,4 +349,105 @@ async function run_wgh(ns, workers, target, required_threads, delay, sleep_time,
 /**  @param {import(".").NS } ns **/
 function getRam(ns, host) {
   return host.ram - ns.getServerUsedRam(host.name);
+}
+
+
+/**
+ * @param {import(".").NS } ns
+ * @param {any[] }workers
+ * @param {number} required_ram
+ */
+function find_server_for_batch(ns, workers, required_ram) {
+  // let weaken_g = undefined;
+  // let weaken_h = undefined;
+  // let grow = undefined;
+  // let hack = undefined;
+  // let ret = { "weaken_grow": weaken_g, "weaken_hack": weaken_h, "grow": grow, "hack": hack };
+
+  // if we can run everything on a single server, then do that
+  for (let w of workers) {
+    if (getRam(ns, w) >= required_ram) {
+      return w;
+    }
+  }
+
+  // TODO: calculate this for hack , weaken and grow
+  // for (let w of workers) {
+  // }
+
+  // for (let w of workers) {
+  // }
+
+  // for (let w of workers) {
+  // }
+
+  // for (let w of workers) {
+  // }
+
+  return null;
+
+}
+
+
+/**
+ * @param {import(".").NS } ns
+ * @param {any} server
+ * @param {string} target
+ * @param {number} required_threads
+ * @param {number} delay
+ * @param {number} sleep_time
+ * @param {boolean} loop
+ * @param {string} script
+ * @param {number} id
+ * @param {boolean} stocks
+ */
+async function run_batch(ns, server, target, required_threads, delay, sleep_time, loop, script, id, stocks) {
+  let pids = [];
+  if (server == undefined || required_threads <= 0)
+    return pids;
+  let args = batch_args(target, delay, sleep_time, id, loop, stocks);
+  let pid = ns.exec(script, server.name, required_threads, ...args);
+  if (pid != 0) pids.push(pid);
+  return pids;
+}
+
+
+/**
+ * @param {string} target
+ * @param {number} delay
+ * @param {number} sleep_time
+ * @param {number} id
+ * @param {boolean} loop
+ * @param {boolean} stocks
+ */
+function batch_args(target, delay, sleep_time, id, loop, stocks) {
+  let args = ["--target", target, "--delay", delay, "--sleep", sleep_time, "--id", id,];
+  if (loop)
+    args.push("--loop");
+  if (stocks)
+    args.push("--stocks");
+  return args;
+}
+
+/**
+ * @param {import(".").NS} ns
+ * @param {undefined} server
+ * @param {ServerData} target
+ * @param {number} delay
+ * @param {number} period_offset
+ * @param {number} s_h
+ * @param {boolean} loop
+ * @param {boolean} stocks
+ * @param {number} s_g
+ */
+async function batch_runner(ns, server, target, delay, period_offset, s_h, loop, stocks, s_g) {
+  let pids = [];
+  if (server == undefined)
+    return pids;
+
+  pids.push(...await run_batch(ns, server, target.name, target.t_h, 4 * delay + period_offset, s_h, loop, scripts.hack, id, stocks));
+  pids.push(...await run_batch(ns, server, target.name, target.t_w_h, 1 * delay + period_offset, 0, loop, scripts.weaken, id, stocks));
+  pids.push(...await run_batch(ns, server, target.name, target.t_g, 2 * delay + period_offset, s_g, loop, scripts.grow, id, stocks));
+  pids.push(...await run_batch(ns, server, target.name, target.t_w_g, 3 * delay + period_offset, 0, loop, scripts.weaken, id++, stocks));
+  return pids;
 }

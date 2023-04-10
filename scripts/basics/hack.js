@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @param {import("..").NS } ns **/
 export async function main(ns) {
   // hack.js [target] [delay] [sleep] [-l] [id]
@@ -10,8 +11,12 @@ export async function main(ns) {
     ["id", 0],
   ]);
   await ns.sleep(data["delay"]);
+    const hostname = data["target"];
   do {
     await ns.sleep(data["sleep"]);
-    await ns.hack(data["target"], {stock: data["stocks"]});
+    await ns.hack(hostname, { stock: data["stocks"] });
+    // const money =
+    //   ns.getServerMoneyAvailable(hostname);
+    // ns.tprint(`${hostname}: $${money}`);
   } while (data["loop"]);
 }

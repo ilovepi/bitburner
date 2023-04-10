@@ -1,5 +1,3 @@
-import { find_all_servers } from "/scripts/utils.js";
-
 const crime = ["Slum Snakes", "Tetrads", "Silhouette", "Speakers for the Dead", "The Dark Army", "The Syndicate"];
 const max_iterations = 50;
 

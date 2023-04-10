@@ -3,7 +3,7 @@ export async function find_all_servers(ns) {
 	var visited = [];
 	var worklist = [ns.getHostname()];
 	while (worklist.length != 0) {
-		let target = worklist.pop(1);
+		let target = worklist.pop();
 		visited.push(target);
 		let adjacent = ns.scan(target);
 		for (const host of adjacent) {

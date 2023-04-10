@@ -5,7 +5,7 @@ export async function main(ns) {
   ns.singularity.universityCourse("rothman university", "study computer science", true);
   ns.exec("/scripts/daemon.js", "home");
 
-  //await ns.sleep(1000 * 5 * 60);
+  await ns.sleep(1000 * 5 * 60);
   buyPrograms(ns);
   ns.exec("/scripts/work.js", "home");
   ns.exec("/scripts/backdoor.js", "home");

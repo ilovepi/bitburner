@@ -1,4 +1,8 @@
+// @ts-ignore
 import { find_all_servers } from "/scripts/utils.js";
+
+// @ts-ignore
+import { ServerData } from "/scripts/ServerData.js";
 
 /**  @param {import(".").NS } ns **/
 export async function main(ns) {
@@ -17,7 +21,11 @@ export async function main(ns) {
   await ns.write("/data/server.json.txt", s, "w");
 }
 
-/**  @param {import(".").NS } ns **/
+/**
+ * @param {import(".").NS} ns *
+ * @param {string} hostname
+ * @param {boolean} debug
+ */
 function analysis(ns, hostname, debug) {
   const hack_ratio = 0.1;
 
@@ -45,7 +53,7 @@ function analysis(ns, hostname, debug) {
   if (max_money == 0 || cur_money == 0 || max_money == cur_money) ratio = 2;
 
   const t_g_i = Math.ceil(ns.growthAnalyze(hostname, ratio));
-  const t_g = Math.ceil(ns.growthAnalyze(hostname, 1 / (1 - hack_ratio)));
+  const t_g = Math.ceil(ns.growthAnalyze(hostname, 1 / (1 - hack_ratio)) * 1.2);
   const sec_g_i = ns.growthAnalyzeSecurity(t_g_i);
   const sec_g = ns.growthAnalyzeSecurity(t_g);
 
@@ -60,34 +68,34 @@ function analysis(ns, hostname, debug) {
 
   const money = hack_rate * t_h * max_money;
 
-  let stats = {
-    name: hostname,
-    is_rooted: ns.hasRootAccess(hostname),
-    ram: ns.getServerMaxRam(hostname),
-    can_hack: ns.getServerRequiredHackingLevel(hostname) < ns.getHackingLevel(),
-    max_money: max_money,
-    cur_money: cur_money,
-    target_money: money,
-    min_sec: min_sec,
-    cur_sec: cur_sec,
-    hack_rate: hack_rate,
-    hack_chance: hack_chance,
-    t_h: t_h,
-    hack_cost: hack_cost,
-    hack_time: hack_time,
-    growth: growth,
-    grow_time: grow_time,
-    t_g_i: t_g_i,
-    t_g: t_g,
-    sec_g_i: sec_g_i,
-    sec_g: sec_g,
-    weaken_val: weaken_value,
-    weaken_time: weak_time,
-    t_w_i: t_w_i,
-    t_w_g_i: t_w_g_i,
-    t_w_g: t_w_g,
-    t_w_h: t_w_h,
-  };
+  let stats = new ServerData(
+    hostname,
+    ns.hasRootAccess(hostname),
+    ns.getServerRequiredHackingLevel(hostname) < ns.getHackingLevel(),
+    ns.getServerMaxRam(hostname),
+    max_money,
+    cur_money,
+    money,
+    min_sec,
+    cur_sec,
+    hack_rate,
+    hack_chance,
+    t_h,
+    hack_cost,
+    hack_time,
+    growth,
+    grow_time,
+    t_g_i,
+    t_g,
+    sec_g_i,
+    sec_g,
+    weaken_value,
+    weak_time,
+    t_w_i,
+    t_w_g_i,
+    t_w_g,
+    t_w_h
+  );
 
   if (debug) {
     let s = JSON.stringify(stats, null, 1);

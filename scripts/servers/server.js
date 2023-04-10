@@ -3,27 +3,29 @@ export async function main(ns) {
   var formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
   const my_money = ns.getServerMoneyAvailable("home");
   ns.tprintf("Available %s", formatter.format(my_money));
-  const per_server = my_money;
+  const servers = ns.getPurchasedServers();
+  const per_server = my_money / Math.max(servers.length, 1);
 
   ns.tprintf("Per Server %s", formatter.format(per_server));
   var max_ram = ns.getPurchasedServerMaxRam();
   ns.tprintf("Max Ram: %d", max_ram);
-  const my_ram = my_min_ram(ns);
-  ns.tprintf("My Max Ram: %d", my_ram);
+  const min_server_ram = find_min_server_ram(ns);
+  ns.tprintf("My Max Ram: %d", min_server_ram);
 
-  var cost = 0;
-  while (max_ram > my_ram) {
-    cost = ns.getPurchasedServerCost(max_ram);
-    if (per_server < cost) max_ram = max_ram / 2;
-    else {
-      ns.tprintf("Max Ram Upgrade: %d for $%d", max_ram, cost);
-      break;
+  let cost = 0;
+  if (servers.length < 25) {
+  ({ max_ram, cost } = determineServerSize(max_ram, min_server_ram, cost, ns, my_money));
+    if (my_money > cost) {
+      ns.purchaseServer("s" + servers.length, max_ram);
+      return;
     }
   }
 
-  if (max_ram < my_min_ram(ns)) {
+  ({ max_ram, cost } = determineServerSize(max_ram, min_server_ram, cost, ns, per_server));
+
+  if (max_ram < find_min_server_ram(ns)) {
     ns.tprintf("Max Ram is not upgradable. Ram: %d, Cost: %s", max_ram, formatter.format(cost));
-    max_ram = 2 * my_ram;
+    max_ram = 2 * min_server_ram;
     cost = ns.getPurchasedServerCost(max_ram);
     let total = cost * ns.getPurchasedServerLimit();
 
@@ -33,12 +35,6 @@ export async function main(ns) {
       formatter.format(cost),
       formatter.format(total),
     );
-    return;
-  }
-
-  const servers = ns.getPurchasedServers();
-  if (servers.length < 25) {
-    ns.purchaseServer("s" + servers.length, max_ram);
     return;
   }
   let min = servers[0];
@@ -54,23 +50,34 @@ export async function main(ns) {
   ns.tprintf("Purchased server: %s with %d", min, max_ram);
 }
 
-/** @param {NS} ns **/
-function my_max_ram(ns) {
-  let max = 0;
-  const servers = ns.getPurchasedServers();
-  for (const s of servers) {
-    var ram = ns.getServerMaxRam(s);
-    if (ram > max) max = ram;
+function determineServerSize(max_ram, my_ram, cost, ns, per_server) {
+  while (max_ram > my_ram) {
+    cost = ns.getPurchasedServerCost(max_ram);
+    if (per_server < cost)
+      max_ram = max_ram / 2;
+    else {
+      ns.tprintf("Max Ram Upgrade: %d for $%d", max_ram, cost);
+      break;
+    }
   }
-  return max;
+  return { max_ram, cost };
 }
 
-function my_min_ram(ns) {
-  let min = my_max_ram(ns);
+/** @param {import("..").NS } ns */
+function my_max_ram(ns) {
   const servers = ns.getPurchasedServers();
-  for (const s of servers) {
-    var ram = ns.getServerMaxRam(s);
-    if (ram < min) min = ram;
-  }
-  return min;
+  return servers
+    .map((s) => ns.getServerMaxRam(s))
+    .reduce((a, b) => Math.max(a, b), -Infinity);
 }
+
+/** @param {import("..").NS } ns */
+export function find_min_server_ram(ns) {
+  const servers = ns.getPurchasedServers();
+  if (servers.length == 0)
+    return 0;
+  return servers
+    .map((s) => ns.getServerMaxRam(s))
+    .reduce((a, b) => Math.min(a, b), Infinity);
+}
+

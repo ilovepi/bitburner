@@ -35,39 +35,15 @@ function connect(ns, path) {
 
 /**
  * @param {import(".").NS } ns
- * @param {string} target
+ * @param {string} node
  * @param {[string]} visited
- * @param {[string]} worklist
- * @param {Map<string,[string]>} path
- */
-async function visit(ns, target, visited, worklist, path) {
-  if (!ns.getServer(host).backdoorInstalled && (await can_hack(ns, target))) {
-    await ns.singularity.installBackdoor();
-  }
-  visited.push(target);
-  path[target].push(target);
-
-  let adjacent = ns.scan(target);
-  for (let a of adjacent) {
-    if (visited.includes(a)) {
-      continue;
-    }
-    worklist.push(a);
-  }
-}
-
-/**
- * @param {import(".").NS } ns
- * @param {string} target
- * @param {[string]} visited
- * @param {[string]} worklist
  * @param {[string]} path
  * @param {Map<string,[string]>} path_map
+ * @param {Number} depth
  */
 async function DFS(ns, node, visited, path, path_map, depth) {
   if (depth == 0) {
     ns.tprint("Error: Hit max depth limit!");
-    exit(-1);
   }
   visited.push(node);
   path.push(node);
@@ -79,5 +55,5 @@ async function DFS(ns, node, visited, path, path_map, depth) {
     }
     await DFS(ns, a, visited, path, path_map, depth - 1);
   }
-  path.pop(1);
+  path.pop();
 }

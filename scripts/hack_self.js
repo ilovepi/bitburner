@@ -2,8 +2,17 @@ import { find_all_servers } from "/scripts/utils.js";
 
 /** @param {import(".").NS } ns */
 export async function main(ns) {
-  var p = { completely_unused_field: true };
+  var p = {
+    completely_unused_field: true,
+  };
+  const guess = "$2a$10$aertxDEkgor8baVtQDZsLuMwwGYmkRM/ohcA6FjmmzIHQeTCsrCcO";
   ns.bypass(p);
   p.completely_unused_field = true;
- await ns.sleep(50);
+  ns.tprint(`karma = ${ns.heart.break()}`);
+  var x = true;
+  ns.alterReality();
+  // ns.openDevMenu(p);
+  ns.rainbow(guess);
+  // ns.iKnowWhatImDoing();
+  await ns.sleep(50);
 }
