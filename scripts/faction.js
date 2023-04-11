@@ -50,7 +50,7 @@ export async function main(ns) {
 
       // work for faction until we have the necessary rep
       while (ns.singularity.getFactionRep(f) < a.rep) {
-        ns.singularity.workForFaction(f, "hacking", false);
+        ns.singularity.workForFaction(f, "hacking", true);
         await ns.sleep(1000 * 60);
       }
     }

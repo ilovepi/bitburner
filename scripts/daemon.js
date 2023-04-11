@@ -134,17 +134,18 @@ export async function main(ns) {
     // do hwgw scripts affect the stock market?
     const affect_stocks = false;
     // Try to be more focused if we don't have a lot of money
-    if (ns.getPlayer().money < 10 ** 9) {
+    if (ns.getPlayer().money < 10 ** 7) {
       targets = targets.filter((a) => a.name == "joesguns");
       to_prepare = to_prepare.filter((a) => a.name == "joesguns");
       // const max_len = 3;
       // if (targets.length > max_len)
       // targets = targets.slice(0, max_len);
+      await hackingPhase(ns, targets, hacks, workers, loop_scripts, affect_stocks);
+      await prepPhase(ns, to_prepare, preping, hacks, workers);
+    } else {
+      await prepPhase(ns, to_prepare, preping, hacks, workers);
+      await hackingPhase(ns, targets, hacks, workers, loop_scripts, affect_stocks);
     }
-
-    await hackingPhase(ns, targets, hacks, workers, loop_scripts, affect_stocks);
-
-    await prepPhase(ns, to_prepare, preping, hacks, workers);
 
     await rootingPhase(ns, future);
 
@@ -217,8 +218,8 @@ async function hackingPhase(ns, targets, hacks, workers, loop, stocks) {
     let hack_ram = ns.getScriptRam(scripts.hack) * t.t_h;
     let required_ram = weaken_grow_ram + weaken__hack_ram + grow_ram + hack_ram;
 
-    const delay = 100;
-    const batch_time = t.weaken_time + 6 * delay;
+    const delay = 50;
+    const batch_time = t.weaken_time + 4 * delay;
     // let batches = Math.ceil(Math.min(/*once per sec*/ t.weaken_time / 500, 100));
     let batches = Math.ceil(batch_time / (4 * delay));
     let period = batch_time / batches;

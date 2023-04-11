@@ -19,16 +19,20 @@ const all_factions = [...early, ...city, ...hacking, ...corporations, ...crime, 
 
 /** @param {import(".").NS } ns */
 export async function main(ns) {
+  const required_rep = 400_000;
   let player = ns.getPlayer();
   for (let c of corporations) {
-    if (!player.factions.includes(c) && ns.singularity.getCompanyRep(c) < 250000) {
-      if (player.jobs[c] != undefined || ns.singularity.applyToCompany(c, "software")) {
-        while (ns.singularity.getCompanyRep(c) < 250000) {
-          ns.singularity.workForCompany(c, false);
+    if (!player.factions.includes(c) && ns.singularity.getCompanyRep(c) < required_rep) {
+      if (ns.singularity.applyToCompany(c, "software") || player.jobs[c] != undefined) {
+        while (ns.singularity.getCompanyRep(c) < required_rep) {
+          ns.singularity.workForCompany(c, true);
           await ns.sleep(60 * 1000);
         }
       }
     }
+  }
+  for (let f of ns.singularity.checkFactionInvitations()) {
+    ns.singularity.joinFaction(f);
   }
   ns.exec("/scripts/backdoor.js", "home");
   ns.exec("/scripts/faction.js", "home");

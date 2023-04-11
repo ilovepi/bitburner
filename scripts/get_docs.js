@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { find_all_servers } from "/scripts/utils.js";
 
 /** @param {import(".").NS } ns */

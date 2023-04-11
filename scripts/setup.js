@@ -26,6 +26,6 @@ export function buyPrograms(ns) {
 }
 
 /** @param {import(".").NS } ns */
-function buyProg(ns, name) {
+export function buyProg(ns, name) {
   if (!ns.fileExists(name, "home")) ns.singularity.purchaseProgram(name);
 }

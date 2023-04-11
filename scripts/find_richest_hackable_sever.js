@@ -1,6 +1,7 @@
+// @ts-ignore
 import {find_all_servers, can_hack} from  "/scripts/utils.js";
 
-/** @param {NS} ns **/
+/** @param {import(".").NS} ns **/
 export async function main(ns) {
 	let visited = await find_all_servers(ns);
 	var max_money = 0;

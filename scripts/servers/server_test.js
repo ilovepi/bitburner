@@ -1,3 +1,4 @@
+// @ts-ignore
 import { my_min_ram } from "/scripts/servers/server.js";
 
 /** @param {import("..").NS } ns */

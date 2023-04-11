@@ -1,3 +1,4 @@
+// @ts-ignore
 import { can_hack } from "/scripts/utils.js";
 
 const max_depth = 100;
@@ -9,6 +10,7 @@ export async function main(ns) {
   let visited = [];
   let path = [];
   let path_map = new Map();
+  // @ts-ignore
   await DFS(ns, ns.getHostname(), visited, path, path_map, max_depth);
 
   for (const [host, path] of path_map.entries()) {

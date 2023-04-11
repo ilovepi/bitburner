@@ -18,7 +18,7 @@ export async function main(ns) {
   }
   data.sort((a, b) => b.score - a.score);
   let s = JSON.stringify(data, null, 1);
-  await ns.write("/data/server.json.txt", s, "w");
+  ns.write("/data/server.json.txt", s, "w");
 }
 
 /**

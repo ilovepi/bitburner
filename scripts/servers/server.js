@@ -14,25 +14,25 @@ export async function main(ns) {
 
   let cost = 0;
   if (servers.length < 25) {
-  ({ max_ram, cost } = determineServerSize(max_ram, min_server_ram, cost, ns, my_money));
-    if (my_money > cost) {
-      ns.purchaseServer("s" + servers.length, max_ram);
+    let data = determineServerSize(max_ram, min_server_ram, cost, ns, my_money);
+    if (my_money > data.cost) {
+      ns.purchaseServer("s" + servers.length, data.max_ram);
       return;
     }
   }
 
-  ({ max_ram, cost } = determineServerSize(max_ram, min_server_ram, cost, ns, per_server));
+  let data = determineServerSize(max_ram, min_server_ram, cost, ns, per_server);
 
-  if (max_ram < find_min_server_ram(ns)) {
-    ns.tprintf("Max Ram is not upgradable. Ram: %d, Cost: %s", max_ram, formatter.format(cost));
-    max_ram = 2 * min_server_ram;
+  if (data.max_ram <= find_min_server_ram(ns)) {
+    ns.tprintf("Max Ram is not upgradable. Ram: %d, Cost: %s", data.max_ram, formatter.format(data.cost));
+    data.max_ram = 2 * min_server_ram;
     cost = ns.getPurchasedServerCost(max_ram);
     let total = cost * ns.getPurchasedServerLimit();
 
     ns.tprintf(
       "Cost of next upgrade: Ram: %d, Cost per server: %s, Total %s:",
-      max_ram,
-      formatter.format(cost),
+      data.max_ram,
+      formatter.format(data.cost),
       formatter.format(total),
     );
     return;
@@ -46,10 +46,17 @@ export async function main(ns) {
   ns.killall(min);
   ns.deleteServer(min);
   ns.tprintf("Deleted server: %s", min);
-  ns.purchaseServer(min, max_ram);
-  ns.tprintf("Purchased server: %s with %d", min, max_ram);
+  ns.purchaseServer(min, data.max_ram);
+  ns.tprintf("Purchased server: %s with %d", min, data.max_ram);
 }
 
+/**
+ * @param {number} max_ram
+ * @param {number} my_ram
+ * @param {number} cost
+ * @param {import("..").NS} ns
+ * @param {number} per_server
+ */
 function determineServerSize(max_ram, my_ram, cost, ns, per_server) {
   while (max_ram > my_ram) {
     cost = ns.getPurchasedServerCost(max_ram);
@@ -60,7 +67,7 @@ function determineServerSize(max_ram, my_ram, cost, ns, per_server) {
       break;
     }
   }
-  return { max_ram, cost };
+  return { max_ram: max_ram, cost: cost };
 }
 
 /** @param {import("..").NS } ns */
